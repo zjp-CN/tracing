@@ -33,7 +33,6 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
-    time::Duration as StdDuration,
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time, UtcOffset};
 
@@ -195,7 +194,8 @@ impl RollingFileAppender {
             offset,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
-        let now = local_datetime(OffsetDateTime::now_utc(), *offset);
+        let offset = *offset;
+        let now = OffsetDateTime::now_utc().to_offset(offset);
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
@@ -203,7 +203,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
-            *offset,
+            offset,
         )?;
         Ok(Self {
             state,
@@ -219,20 +219,8 @@ impl RollingFileAppender {
         return (self.now)();
 
         #[cfg(not(test))]
-        local_datetime(OffsetDateTime::now_utc(), self.state.offset)
+        OffsetDateTime::now_utc().to_offset(self.state.offset)
     }
-}
-
-// This turns a UTC time to a local time.
-fn local_datetime(dt: OffsetDateTime, tz: UtcOffset) -> OffsetDateTime {
-    let secs = tz.whole_seconds();
-    let secs_abs = secs.unsigned_abs().into();
-    let local = if secs.is_negative() {
-        dt - StdDuration::from_secs(secs_abs)
-    } else {
-        dt + StdDuration::from_secs(secs_abs)
-    };
-    local.replace_offset(tz)
 }
 
 impl io::Write for RollingFileAppender {
