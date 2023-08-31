@@ -209,7 +209,7 @@ impl RollingFileAppender {
             state,
             writer,
             #[cfg(test)]
-            now: Box::new(OffsetDateTime::now_utc),
+            now: Box::new(move || OffsetDateTime::now_utc().to_offset(offset)),
         })
     }
 
